@@ -1,4 +1,4 @@
-%% Copyright 2016 Erlio GmbH Basel Switzerland (http://erl.io)
+%% Copyright 2017 Erlio GmbH Basel Switzerland (http://erl.io)
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -20,7 +20,26 @@ register_cli() ->
     register_cli_usage(),
     status_cmd(),
     register_cmd(),
+    cache_stats_cmd(),
     deregister_cmd().
+
+cache_stats_cmd() ->
+    Cmd = ["vmq-admin", "webhooks", "cache", "stats"],
+    FlagSpecs = [{reset, [{longname, "reset"}]}],
+    Callback =
+        fun(_, [], []) ->
+                Table =
+                    [[{stat, Stat}, {value, Value}] ||
+                         {Stat, Value} <- maps:to_list(vmq_webhooks_cache:stats())],
+                [clique_status:table(Table)];
+           (_, [], [{reset, _ResetFlag}]) ->
+                vmq_webhooks_cache:reset_stats(),
+                [clique_status:text("Done")];
+           (_, _, _) ->
+                Text = clique_status:text(cache_usage()),
+                [clique_status:alert([Text])]
+        end,
+    clique:register_command(Cmd, [], FlagSpecs, Callback).
 
 status_cmd() ->
     Cmd = ["vmq-admin", "webhooks", "status"],
@@ -31,7 +50,10 @@ status_cmd() ->
                       {base64payload, b64opt(Opts)}] ||
                         {Hook, Endpoints} <- vmq_webhooks_plugin:all_hooks(),
                         {Endpoint, Opts} <- Endpoints],
-                [clique_status:table(Table)]
+                [clique_status:table(Table)];
+           (_, _, _) ->
+                Text = clique_status:text(webhooks_usage()),
+                [clique_status:alert([Text])]
         end,
     clique:register_command(Cmd, [], [], Callback).
 
@@ -134,7 +156,8 @@ register_cli_usage() ->
     clique:register_usage(["vmq-admin", "webhooks"], webhooks_usage()),
     clique:register_usage(["vmq-admin", "webhooks", "register"], register_usage()),
     clique:register_usage(["vmq-admin", "webhooks", "deregister"], deregister_usage()),
-    clique:register_usage(["vmq-admin", "webhooks", "status"], status_usage()).
+    clique:register_usage(["vmq-admin", "webhooks", "status"], status_usage()),
+    clique:register_usage(["vmq-admin", "webhooks", "cache"], cache_usage()).
 
 webhooks_usage() ->
     ["vmq-admin webhooks <sub-command>\n\n",
@@ -142,7 +165,8 @@ webhooks_usage() ->
      "  Sub-commands:\n",
      "    status      Show the status of registered webhooks\n",
      "    register    Register a webhook\n",
-     "    deregister  Deregister a webhook\n\n",
+     "    deregister  Deregister a webhook\n",
+     "    cache       Manage the webhooks cache\n\n",
      "  Use --help after a sub-command for more details.\n"
     ].
 
@@ -165,4 +189,12 @@ status_usage() ->
     ["vmq-admin webhooks status\n\n",
      "  Shows the information of the registered webhooks.",
      "\n\n"
+    ].
+
+cache_usage() ->
+    ["vmq-admin webhooks cache\n\n",
+     "  Manage the webhooks cache."
+     "\n\n",
+     "  Sub-commands:\n",
+     "    stats       Show statistics about the cache\n"
     ].
