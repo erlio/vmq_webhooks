@@ -100,9 +100,12 @@ cache_expired_entry(_) ->
                                       [?PEER, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, Self, ?PASSWORD, true]),
     exp_response(cache_auth_on_register_ok),
     ok = exp_nothing(200),
-    #{entries := 1,
-      hits := 1,
-      misses := 2} = vmq_webhooks_cache:stats(),
+    #{{entries,<<"http://localhost:34567/cache1s">>,
+       auth_on_register} := 1,
+      {hits,<<"http://localhost:34567/cache1s">>,
+       auth_on_register} := 1,
+      {misses,<<"http://localhost:34567/cache1s">>,
+       auth_on_register} := 2} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_register, Endpoint).
 
 cache_auth_on_register(_) ->
@@ -115,9 +118,12 @@ cache_auth_on_register(_) ->
     {ok ,[]} = vmq_plugin:all_till_ok(auth_on_register,
                                       [?PEER, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, Self, ?PASSWORD, true]),
     ok = exp_nothing(200),
-    #{entries := 1,
-      hits := 1,
-      misses := 1} = vmq_webhooks_cache:stats(),
+    #{{entries,<<"http://localhost:34567/cache">>,
+       auth_on_register} := 1,
+      {hits,<<"http://localhost:34567/cache">>,
+       auth_on_register} := 1,
+      {misses,<<"http://localhost:34567/cache">>,
+       auth_on_register} := 1} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_register, Endpoint).
 
 cache_auth_on_publish(_) ->
@@ -130,9 +136,12 @@ cache_auth_on_publish(_) ->
     {ok, []} = vmq_plugin:all_till_ok(auth_on_publish,
                       [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false]),
     ok = exp_nothing(200),
-    #{entries := 1,
-      hits := 1,
-      misses := 1} = vmq_webhooks_cache:stats(),
+    #{{entries,<<"http://localhost:34567/cache">>,
+       auth_on_publish} := 1,
+      {hits,<<"http://localhost:34567/cache">>,
+       auth_on_publish} := 1,
+      {misses,<<"http://localhost:34567/cache">>,
+       auth_on_publish} := 1} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_publish, Endpoint).
 
 cache_auth_on_subscribe(_) ->
@@ -145,9 +154,12 @@ cache_auth_on_subscribe(_) ->
     {ok, []} = vmq_plugin:all_till_ok(auth_on_subscribe,
                       [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, [{?TOPIC, 1}]]),
     ok = exp_nothing(200),
-    #{entries := 1,
-      hits := 1,
-      misses := 1} = vmq_webhooks_cache:stats(),
+    #{{entries,<<"http://localhost:34567/cache">>,
+       auth_on_subscribe} := 1,
+      {hits,<<"http://localhost:34567/cache">>,
+       auth_on_subscribe} := 1,
+      {misses,<<"http://localhost:34567/cache">>,
+       auth_on_subscribe} := 1} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_subscribe, Endpoint).
 
 auth_on_register_test(_) ->

@@ -103,10 +103,10 @@ hit(Endpoint, Hook) ->
     ets:update_counter(?STATS, Key, 1, {Key, 0}).
 
 expired(ExpirationTs) ->
-    ExpirationTs < erlang:system_time(second).
+    ExpirationTs < trunc(erlang:system_time()/1000000000).
 
 ts_from_now(MaxAge) ->
-    erlang:system_time(second) + MaxAge.
+    trunc(erlang:system_time()/1000000000) + MaxAge.
 
 stats() ->
     maps:from_list(ets:tab2list(?STATS)).
