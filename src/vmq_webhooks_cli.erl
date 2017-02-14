@@ -29,8 +29,15 @@ cache_stats_cmd() ->
     Callback =
         fun(_, [], []) ->
                 Table =
-                    [[{stat, Stat}, {value, Value}] ||
-                         {Stat, Value} <- maps:to_list(vmq_webhooks_cache:stats())],
+                    maps:fold(
+                      fun({Type, Endpoint, Hook}, Ctr, Acc) ->
+                              [[{stat, Type},
+                                {endpoint, Endpoint},
+                                {hook, Hook},
+                                {value, Ctr}] | Acc]
+                      end,
+                      [],
+                      vmq_webhooks_cache:stats()),
                 [clique_status:table(Table)];
            (_, [], [{reset, _ResetFlag}]) ->
                 vmq_webhooks_cache:reset_stats(),

@@ -33,13 +33,10 @@
 new() ->
     ets:new(?CACHE, [public, bag, named_table, {read_concurrency, true}]),
     ets:new(?STATS, [public, ordered_set, named_table, {write_concurrency, true}]),
-    ets:insert(?STATS, {hits, 0}),
-    ets:insert(?STATS, {misses, 0}),
     ok.
 
 reset_stats() ->
-    ets:insert(?STATS, {hits, 0}),
-    ets:insert(?STATS, {misses, 0}).
+    ets:delete_all_objects(?STATS).
 
 purge_all() ->
     ets:delete_all_objects(?CACHE),
@@ -48,10 +45,10 @@ purge_all() ->
 lookup(Endpoint, Hook, Args) ->
     case lookup_(Endpoint, Hook, Args) of
         not_found ->
-            miss(),
+            miss(Endpoint, Hook),
             not_found;
         Val ->
-            hit(),
+            hit(Endpoint, Hook),
             Val
     end.
 
@@ -66,6 +63,7 @@ insert(Endpoint, Hook, Args, ExpiryInSecs, Modifiers) ->
     %% do not store the payload modifier
     Row = {Key, SubscriberId, ExpirationTs, lists:keydelete(payload, 1, Modifiers)},
     true = ets:insert(?CACHE, Row),
+    incr_entry(Endpoint, Hook),
     ok.
 
 %% internal functions.
@@ -79,17 +77,30 @@ lookup_(Endpoint, Hook, Args) ->
             case expired(ExpirationTs) of
                 true ->
                     ets:delete(?CACHE, Key),
+                    decr_entry(Endpoint, Hook),
                     not_found;
                 false ->
                     Modifiers
             end
     end.
 
-miss() ->
-    ets:update_counter(?STATS, misses, 1, {misses, 0}).
+decr_entry(Endpoint, Hook) ->
+    update_entries(Endpoint, Hook, -1).
 
-hit() ->
-    ets:update_counter(?STATS, hits, 1, {hits, 0}).
+incr_entry(Endpoint, Hook) ->
+    update_entries(Endpoint, Hook, 1).
+
+update_entries(Endpoint, Hook, Val) ->
+    Key = {entries, Endpoint, Hook},
+    ets:update_counter(?STATS, Key, Val, {Key, 0}).
+
+miss(Endpoint, Hook) ->
+    Key = {misses, Endpoint, Hook},
+    ets:update_counter(?STATS, Key, 1, {Key, 0}).
+
+hit(Endpoint, Hook) ->
+    Key = {hits, Endpoint, Hook},
+    ets:update_counter(?STATS, Key, 1, {Key, 0}).
 
 expired(ExpirationTs) ->
     ExpirationTs < erlang:system_time(second).
@@ -98,8 +109,4 @@ ts_from_now(MaxAge) ->
     erlang:system_time(second) + MaxAge.
 
 stats() ->
-    [{_,Hits}] = ets:lookup(?STATS, hits),
-    [{_,Misses}] = ets:lookup(?STATS, misses),
-    #{hits => Hits,
-      misses => Misses,
-      entries => ets:info(?CACHE, size)}.
+    maps:from_list(ets:tab2list(?STATS)).
