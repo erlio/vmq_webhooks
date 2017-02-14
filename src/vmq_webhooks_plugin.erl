@@ -460,13 +460,13 @@ maybe_call_endpoint(Endpoint, EOpts, Hook, Args)
         not_found ->
             case call_endpoint(Endpoint, EOpts, Hook, Args) of
                 {Modifiers, ExpiryInSecs} when is_list(Modifiers) ->
-                    vmq_webhooks_cache:insert(Endpoint, Hook, Args, ExpiryInSecs),
+                    vmq_webhooks_cache:insert(Endpoint, Hook, Args, ExpiryInSecs, Modifiers),
                     Modifiers;
                 Res ->
                     Res
             end;
-        _Val ->
-            []
+        Modifiers ->
+            Modifiers
     end;
 maybe_call_endpoint(Endpoint, EOpts, Hook, Args) ->
     call_endpoint(Endpoint, EOpts, Hook, Args).

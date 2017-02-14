@@ -21,7 +21,7 @@
          new/0
         ,reset_stats/0
         ,lookup/3
-        ,insert/4
+        ,insert/5
         ,stats/0
         ,purge_all/0
         ]).
@@ -55,7 +55,7 @@ lookup(Endpoint, Hook, Args) ->
             Val
     end.
 
-insert(Endpoint, Hook, Args, ExpiryInSecs) ->
+insert(Endpoint, Hook, Args, ExpiryInSecs, Modifiers) ->
     SubscriberId =
         {proplists:get_value(mountpoint, Args),
          proplists:get_value(client_id, Args)},
@@ -63,7 +63,8 @@ insert(Endpoint, Hook, Args, ExpiryInSecs) ->
     %% Remove the payload from cache, as it doesn't make sense to
     %% cache that.
     Key = {Endpoint, Hook, lists:keydelete(payload, 1, Args)},
-    Row = {Key, SubscriberId, ExpirationTs},
+    %% do not store the payload modifier
+    Row = {Key, SubscriberId, ExpirationTs, lists:keydelete(payload, 1, Modifiers)},
     true = ets:insert(?CACHE, Row),
     ok.
 
@@ -74,13 +75,13 @@ lookup_(Endpoint, Hook, Args) ->
     case ets:lookup(?CACHE, Key) of
         [] ->
             not_found;
-        [{{_EP,_H,_Args},_Sid,ExpirationTs}] = Val ->
+        [{{_EP,_H,_Args},_Sid,ExpirationTs, Modifiers}] ->
             case expired(ExpirationTs) of
                 true ->
                     ets:delete(?CACHE, Key),
                     not_found;
                 false ->
-                    Val
+                    Modifiers
             end
     end.
 
