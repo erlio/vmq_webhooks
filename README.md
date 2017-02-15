@@ -37,6 +37,12 @@ See [changelog.md](./changelog.md) for changes.
 
 ## Usage
 
+Note, this plugin is now distributed as part of VerneMQ - this means you don't
+have to manually build it. Enabling the plugin and registering webhooks is
+documented within the `vernemq.conf` configuration file itself. You can of
+course still use the `vmq-admin` command to register and deregister webhooks at
+runtime.
+
 Building the plugin:
 
     $ ./rebar3 compile
@@ -56,12 +62,39 @@ Deregistering an endpoint:
 The payload is by default base64 encoded, to disable this add the
 `--base64payload=false` flag when registering the hook.
 
+## Caching
+
+VerneMQ webhooks support caching of the `auth_on_register`, `auth_on_publish`
+and `auth_on_subscribe` hooks.
+
+This can be used to speed up authentication and authorization tremendously. All
+data passed to these hooks is used to look if the call is in the cache, except
+in the case of the `auth_on_publish` where the payload is omitted.
+
+To enable caching for an endpoint simply return the `cache-control:
+max-age=<seconds>` in the response headers to one of the mentioned hooks. If the
+call was successful (authentication granted), the request will be cached
+together with any modifiers, except for the `payload` modifier in the
+`auth_on_publish` hook.
+
+Whenever a non-expired entry is looked up in the cache the endpoint will not be
+called and the modifiers of the cached entry will be returned, if any.
+
+Note, cache entries are currently not actively disposed on after expiry and will
+remain in memory.
+
 ## Persisting hooks across VerneMQ restarts
 
 Webhooks added with `vmq-plugin` command line tool are not persisted across
-VerneMQ restarts. To make hooks persistent they can be added to the
-`priv/vmq_webhooks.conf` file. It contains an example and is hopefully
-self-explanatory.
+VerneMQ restarts. To persist webhooks add them to the main `vernemq.conf`
+file. An example looks like:
+
+``` yaml
+vmq_webhooks.webhook1.hook = auth_on_publish
+vmq_webhooks.webhook1.endpoint = http://localhost:8080
+```
+
+See the `vernemq.conf` file for details.
 
 ## Webhooks
 
